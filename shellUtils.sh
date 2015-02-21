@@ -1,11 +1,17 @@
-#!/bin/sh
-#set -x
+#!/bin/bash
 
-
-getConnsDetailByPort(){
-	port=$1
-        netstat -ant4 |tail -n +3 |awk -F' ' '{print $4,$6}'|awk -F':' '{print $2 }'|awk -v p=$port '{if($1==p){print $2}}'|uniq -c|sort -r
+log_error(){ 
+    echo "Error:" $@>&2 
 }
+log_warn(){ 
+    echo "Warn:" $@>&2 
+}
+
+printUsage(){ 
+    echo "Usage:" $@
+    exit -1 
+}
+
 
 ######################
 #get the connectionns of connecting to the specified port
@@ -14,21 +20,18 @@ getConnsDetailByPort(){
 
 getConnsByPort(){
     port=""
-    desCol=""
-    if [ $# -eq 2 ]
+    
+    if [ $# -le 0 ]
     then 
-	port="$2"
-	desCol="5"
-    else
-	port="$1"
-	desCol="4"
-    fi
+	echo "please specify a port";exit -1
+    fi 
 
-    echo "# of connections which connected to the destination port: $port"
-    netstat -an4|tail -n +3|awk -v col=$desCol -F' ' '{print $col}' |awk -v p=$port -F':' '{if($2==p)count=count+1}END{print count}'
+    echo "# of connections:"
+    #netstat -an4|tail -n +3|awk -v col=$desCol -F' ' '{print $col}' |awk -v p=$port -F':' '{if($2==p)count=count+1}END{print count}'
+    ss -nt sport = :$1|tail -n +2|wc -l
 
     echo "connection state details:"
-    getConnsDetailByPort $port
+    ss -nt sport = :$1|tail -n +2|awk '{print $1}'|uniq -c|sort -r
 
 
 }
@@ -41,8 +44,42 @@ connStat(){
     if [ `whoami` == "root" ]
     then 
 	echo "port connections"
-	netstat -ant4p|tail -n +3|awk -F' ' '{if($6!="LISTEN")print $4}'|awk -F':' '{arr[$2]=arr[$2]+1}END{for(i in arr){print i,arr[i]|"sort -r -n -k2";}}'
+	ss -nt|tail -n +2|awk '{print $4}'|awk -F':' '{arr[$2]=arr[$2]+1}END{for(i in arr){print i,arr[i]|"sort -r -n -k2";}}'
     else
 	echo "please exec this command by root"
     fi
+}
+
+
+######################
+#
+#
+###############################
+#
+promptYesNo(){
+    if [ $# -lt 0 ] 
+    then 
+	log_error "Insufficient arguments"
+	return 1
+    fi
+
+    YESNO=""
+
+    while : 
+    do 
+	printf "$1 yes/no?"
+	read YESNO
+
+	case "$YESNO" in 
+	 [yY]|[yY][eE][sS])
+	    YESNO=y; break;;
+	 [nN]|[nN][oO])
+	    YESNO=n; break;;
+	 *)
+	    YESNO="" ;;
+	esac
+    done
+
+    export YESNO
+    return 0
 }
