@@ -10,6 +10,12 @@ usage(){
 PORT=""
 INTERVAL=3
 
+if [ $# -le 0 ]
+then
+    usage;exit -1
+fi
+
+
 until [ $# -eq 0 ]
 do 
     case $1 in 
